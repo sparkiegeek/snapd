@@ -158,6 +158,33 @@ func New() (*Overlord, error) {
 	return o, nil
 }
 
+func initialStoreConfig(s *state.State) (*store.Config, error) {
+	config := store.DefaultConfig()
+	apiState := storestate.API(s)
+	if apiState != "" {
+		api, err := url.Parse(apiState)
+		if err != nil {
+			return nil, fmt.Errorf("invalid store API URL: %s", err)
+		}
+		err = config.SetAPI(api)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return config, nil
+}
+
+func replaceStore(o *Overlord, s *state.State, config *store.Config) {
+	authContext := auth.NewAuthContext(s, o.deviceMgr)
+	sto := storeNew(config, authContext)
+	storestate.ReplaceStore(s, sto)
+}
+
+// ReplaceStore installs a new store.
+func (o *Overlord) ReplaceStore(s *state.State, config *store.Config) {
+	replaceStore(o, s, config)
+}
+
 func loadState(backend state.Backend) (*state.State, error) {
 	if !osutil.FileExists(dirs.SnapStateFile) {
 		// fail fast, mostly interesting for tests, this dir is setup
